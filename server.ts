@@ -1,15 +1,11 @@
+// Import Deno standard WebSocket
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { 
-  WebSocket, 
-  isWebSocketCloseEvent 
-} from "https://deno.land/std@0.208.0/ws/mod.ts";
+import { WebSocket, isWebSocketCloseEvent } from "https://deno.land/std@0.208.0/ws/mod.ts";
 
 // ----------------- Configuration -----------------
 const PORT = 8080;
 const ADMIN_PASSWORD = "Merkeb2123Asse1219";
 const JWT_SECRET = "bingo-game-secret-key-2024";
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX = 60; // 60 requests per minute
 
 // ----------------- Interfaces -----------------
 interface User {
@@ -45,14 +41,14 @@ interface Device {
 const clients = new Set<WebSocket>();
 const devices: Map<string, Device> = new Map(); // key = deviceId
 
-// ----------------- WebSocket handler -----------------
+// ----------------- WebSocket Handler -----------------
 async function handleWs(sock: WebSocket) {
   clients.add(sock);
 
   try {
     for await (const ev of sock) {
       if (typeof ev === "string") {
-        // Incoming message from client
+        // Parse incoming message
         const data = JSON.parse(ev);
 
         if (data.type === "checkDevice") {
@@ -77,7 +73,7 @@ async function handleWs(sock: WebSocket) {
           }
         }
 
-        // You can handle other message types here (e.g., admin commands)
+        // Here you can add more message types (admin commands, number calls, etc.)
       } else if (isWebSocketCloseEvent(ev)) {
         clients.delete(sock);
       }
@@ -88,13 +84,13 @@ async function handleWs(sock: WebSocket) {
   }
 }
 
-// ----------------- HTTP handler -----------------
+// ----------------- HTTP Upgrade Handler -----------------
 async function handler(req: Request): Promise<Response> {
   const { socket, response } = Deno.upgradeWebSocket(req);
   handleWs(socket);
   return response;
 }
 
-// ----------------- Start server -----------------
-console.log(`Deno Bingo WebSocket server running on ws://localhost:${PORT}`);
+// ----------------- Start Deno Server -----------------
+console.log(`✅ Deno Bingo WebSocket server running on ws://localhost:${PORT}`);
 await serve(handler, { port: PORT });
