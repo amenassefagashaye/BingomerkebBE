@@ -1,7 +1,3 @@
-// Import Deno standard WebSocket
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { WebSocket, isWebSocketCloseEvent } from "https://deno.land/std@0.208.0/ws/mod.ts";
-
 // ----------------- Configuration -----------------
 const PORT = 8080;
 const ADMIN_PASSWORD = "Merkeb2123Asse1219";
@@ -39,23 +35,22 @@ interface Device {
 
 // ----------------- In-memory storage -----------------
 const clients = new Set<WebSocket>();
-const devices: Map<string, Device> = new Map(); // key = deviceId
+const devices: Map<string, Device> = new Map(); // deviceId → Device
 
-// ----------------- WebSocket Handler -----------------
+// ----------------- WebSocket handler -----------------
 async function handleWs(sock: WebSocket) {
   clients.add(sock);
 
   try {
     for await (const ev of sock) {
       if (typeof ev === "string") {
-        // Parse incoming message
         const data = JSON.parse(ev);
 
         if (data.type === "checkDevice") {
           const device = devices.get(data.deviceId);
 
           if (!device) {
-            // New device
+            // First time device
             const newDevice: Device = {
               id: crypto.randomUUID(),
               deviceId: data.deviceId,
@@ -73,24 +68,27 @@ async function handleWs(sock: WebSocket) {
           }
         }
 
-        // Here you can add more message types (admin commands, number calls, etc.)
-      } else if (isWebSocketCloseEvent(ev)) {
-        clients.delete(sock);
+        // Add more message types here (admin commands, bingo numbers, etc.)
       }
     }
   } catch (err) {
     console.error("WebSocket error:", err);
+  } finally {
     clients.delete(sock);
   }
 }
 
-// ----------------- HTTP Upgrade Handler -----------------
+// ----------------- HTTP Upgrade handler -----------------
 async function handler(req: Request): Promise<Response> {
+  if (req.headers.get("upgrade") !== "websocket") {
+    return new Response("This server only supports WebSocket requests", { status: 400 });
+  }
+
   const { socket, response } = Deno.upgradeWebSocket(req);
   handleWs(socket);
   return response;
 }
 
-// ----------------- Start Deno Server -----------------
+// ----------------- Start the server -----------------
 console.log(`✅ Deno Bingo WebSocket server running on ws://localhost:${PORT}`);
-await serve(handler, { port: PORT });
+await Deno.serve(handler, { port: PORT });
